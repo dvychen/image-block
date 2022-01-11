@@ -1,2 +1,2 @@
-# image-remover
-Chrome extension to remove certain types of images on webpages.
+# image-block
+Chrome extension to block certain types of images on webpages.
