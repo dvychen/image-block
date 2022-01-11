@@ -11,6 +11,13 @@
         "activeTab",
         "scripting"
     ],
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"], 
+            "all_frames": true,
+            "js": ["content-block-images.js"]
+        }
+    ],
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
