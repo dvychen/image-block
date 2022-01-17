@@ -8,16 +8,9 @@ toggleButton.addEventListener("click", async () => {
 
     let allTabs = await chrome.tabs.query({});
     for (let tab of allTabs) {
-        chrome.tabs.sendMessage(tab.id, {
-            message: "isBlocking_value",
-            value: isBlocking
-        },
-        () => {
-            console.log("message was sent:");
-            console.log({
-                message: "isBlocking_value",
-                value: isBlocking
-            });
+        await chrome.tabs.sendMessage(tab.id, {
+            "message": "isBlocking_value",
+            "value": isBlocking
         });
     }
 
