@@ -1,49 +1,36 @@
 let toggleButton = document.getElementById("toggleButton");
 
+chrome.storage.sync.get("isBlocking", ({ isBlocking }) => {
+    updateToggleColour(isBlocking, toggleButton);
+});
+
+chrome.storage.sync.get("apiKey", ({ apiKey }) => {
+    document.getElementById("apiKeyInput").value = apiKey ? apiKey : "";
+});
+
 toggleButton.addEventListener("click", async () => {
-    // let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     let {isBlocking} = await chrome.storage.sync.get("isBlocking");
     isBlocking = !isBlocking;
     await chrome.storage.sync.set({ isBlocking: isBlocking });
+    updateToggleColour(isBlocking, toggleButton);
 
     let allTabs = await chrome.tabs.query({});
     for (let tab of allTabs) {
         await chrome.tabs.sendMessage(tab.id, {
-            "message": "isBlocking_value",
-            "value": isBlocking
+            "message": "block_request",
+            "value": isBlocking,
+            "apiKey": document.getElementById("apiKeyInput").value
         });
     }
-
-    // await chrome.scripting.executeScript({
-    //     target: {tabId: tab.id},
-    //     function: setPageBackgroundColor
-    // }); 
-
+    await chrome.storage.sync.set({ 
+        "apiKey": document.getElementById("apiKeyInput").value
+    }); 
 });
 
-// Temporary
-// function setPageBackgroundColor() {
-//     chrome.storage.sync.get("isBlocking", ({ isBlocking }) => {
-//         if (isBlocking) 
-//             document.body.style.backgroundColor = 'green';
-//         else 
-//             document.body.style.backgroundColor = 'red';
-//     });
-// }
-
-// Method for blocking images:
-// Step 1: Block all images (done using block-img.css)
-// Step 2: If !isBlocking, unblock all images
-// Step 3: Otherwise, iterate images checking if matches filters --> if no match, then set opacity 1.
-
-function labelImages(filters) {
-    
-}
-
-function blockImages(filters) {
-    
-}
-
-function unblockImages(filters) {
-
+function updateToggleColour(isBlocking, toggleButton) {
+    if (isBlocking) {
+        toggleButton.style.backgroundColor = "green";
+    } else {
+        toggleButton.style.backgroundColor = "red";
+    }
 }

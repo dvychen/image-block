@@ -1,11 +1,12 @@
 let apiURL = "https://vision.googleapis.com/v1/images:annotate";
-let apiKey = "AIzaSyC9IYj5P1MkFm-V-ziE4GGhVxybB-Fg6YU";
 // Google Vision API can only take 16 images per API call.
 let apiImgMax = 16;
 const uriToLabelAnnotations = new Map();
 
 chrome.storage.sync.get("isBlocking", async ({ isBlocking }) => {
-    await updateBlocks(isBlocking);
+    chrome.storage.sync.get("apiKey", async ({ apiKey }) => { 
+        await updateBlocks(isBlocking, apiKey);
+    });
 });
 
 chrome.storage.sync.get("filters", ({ filters }) => {
@@ -13,13 +14,13 @@ chrome.storage.sync.get("filters", ({ filters }) => {
 });
 
 chrome.runtime.onMessage.addListener(async (msgObj, sender, sendResponse) => {
-    if (msgObj.message === "isBlocking_value") {
-        await updateBlocks(msgObj.value);
+    if (msgObj.message === "block_request") {
+        await updateBlocks(msgObj.value, msgObj.apiKey);
     }
 })
 
 // updateBlocks blocks the filtered images if isBlocking, unblocks the filtered images otherwise.
-async function updateBlocks(isBlocking) {
+async function updateBlocks(isBlocking, apiKey) {
     let allImgs = document.getElementsByTagName("img");
     if (!isBlocking) {
         for (let img of allImgs) {
@@ -75,7 +76,7 @@ async function updateBlocks(isBlocking) {
                 console.log("length is: " + apiReqChunk.length);
                 // The labelAnnotations we get in response are in same order of images as our request.
                 for (let i = 0; i < apiReqChunk.length; i++) {
-                    uriToLabelAnnotations.set(apiReqChunk[i].image.source.imageUri, response.responses[i].labelAnnotations);
+                    uriToLabelAnnotations.set(apiReqChunk[i].image.source.imageUri, response?.responses[i]?.labelAnnotations);
                 }
             }
         }
@@ -85,7 +86,7 @@ async function updateBlocks(isBlocking) {
         // Iterate through each img, if any one of its labels are in filterSet, then block it.
         for (let img of allImgs) {
             // Google Vision API sometimes fails to access the image (see: https://github.com/googleapis/google-cloud-java/issues/2276, 
-            https://stackoverflow.com/questions/45119587/we-can-not-access-the-url-currently). In this case, we shall block the image just to be safe.
+            //   https://stackoverflow.com/questions/45119587/we-can-not-access-the-url-currently). In this case, we shall block the image just to be safe.
             if (!uriToLabelAnnotations.get(img.src)) { 
                 img.style.opacity = 0;
             } else {
