@@ -8,6 +8,10 @@ chrome.storage.sync.get("apiKey", ({ apiKey }) => {
     document.getElementById("apiKeyInput").value = apiKey ? apiKey : "";
 });
 
+chrome.storage.sync.get("filters", ({ filters }) => {
+    document.getElementById("filtersInput").value = filters.length ? filters : "";
+});
+
 toggleButton.addEventListener("click", async () => {
     let {isBlocking} = await chrome.storage.sync.get("isBlocking");
     isBlocking = !isBlocking;
@@ -19,11 +23,13 @@ toggleButton.addEventListener("click", async () => {
         await chrome.tabs.sendMessage(tab.id, {
             "message": "block_request",
             "value": isBlocking,
-            "apiKey": document.getElementById("apiKeyInput").value
+            "apiKey": document.getElementById("apiKeyInput").value,
+            "filters": document.getElementById("filtersInput").value.toLowerCase().split(",")
         });
     }
     await chrome.storage.sync.set({ 
-        "apiKey": document.getElementById("apiKeyInput").value
+        "apiKey": document.getElementById("apiKeyInput").value,
+        "filters": document.getElementById("filtersInput").value.toLowerCase().split(",")
     }); 
 });
 

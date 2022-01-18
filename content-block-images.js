@@ -1,26 +1,24 @@
 let apiURL = "https://vision.googleapis.com/v1/images:annotate";
 // Google Vision API can only take 16 images per API call.
 let apiImgMax = 16;
+let apiMaxResults = 15; 
+let aiTolerance = 0.30;
+
 const uriToLabelAnnotations = new Map();
 
-chrome.storage.sync.get("isBlocking", async ({ isBlocking }) => {
-    chrome.storage.sync.get("apiKey", async ({ apiKey }) => { 
-        await updateBlocks(isBlocking, apiKey);
-    });
-});
-
-chrome.storage.sync.get("filters", ({ filters }) => {
-    console.log(`Filters loaded: ${filters}`);
+// Should probably combine these two calls into the same one instead of nesting
+chrome.storage.sync.get(["isBlocking", "apiKey", "filters"], async ({ isBlocking, apiKey, filters }) => {
+    await updateBlocks(isBlocking, apiKey, filters);
 });
 
 chrome.runtime.onMessage.addListener(async (msgObj, sender, sendResponse) => {
     if (msgObj.message === "block_request") {
-        await updateBlocks(msgObj.value, msgObj.apiKey);
+        await updateBlocks(msgObj.value, msgObj.apiKey, msgObj.filters);
     }
 })
 
 // updateBlocks blocks the filtered images if isBlocking, unblocks the filtered images otherwise.
-async function updateBlocks(isBlocking, apiKey) {
+async function updateBlocks(isBlocking, apiKey, filters) {
     let allImgs = document.getElementsByTagName("img");
     if (!isBlocking) {
         for (let img of allImgs) {
@@ -43,7 +41,7 @@ async function updateBlocks(isBlocking, apiKey) {
                         },
                         "features": [
                             {
-                                "maxResults": 5,
+                                "maxResults": 15,
                                 "type": "LABEL_DETECTION"
                             }
                         ]
@@ -59,6 +57,7 @@ async function updateBlocks(isBlocking, apiKey) {
                 apiReqChunks.push(apiRequests.slice(i, i + apiImgMax));
             }
             for (let apiReqChunk of apiReqChunks) {
+                console.log("ImageBlock: Calling Google Vision AI.");
                 const rawResponse = await fetch(apiURL + "?key=" + apiKey, {
                     "method": "POST",
                     "headers": {
@@ -68,12 +67,14 @@ async function updateBlocks(isBlocking, apiKey) {
                         "requests": apiReqChunk
                     })
                 });
+                console.log("ImageBlock: Received response from Google Vision AI.");
                 const response = await rawResponse.json();
-                console.log("response is: ");
-                console.log(response);
-                console.log("apiReqChunk is: ");
-                console.log(apiReqChunk);
-                console.log("length is: " + apiReqChunk.length);
+                // For debugging API requests:
+                // console.log("response is: ");
+                // console.log(response);
+                // console.log("apiReqChunk is: ");
+                // console.log(apiReqChunk);
+                // console.log("length is: " + apiReqChunk.length);
                 // The labelAnnotations we get in response are in same order of images as our request.
                 for (let i = 0; i < apiReqChunk.length; i++) {
                     uriToLabelAnnotations.set(apiReqChunk[i].image.source.imageUri, response?.responses[i]?.labelAnnotations);
@@ -81,7 +82,6 @@ async function updateBlocks(isBlocking, apiKey) {
             }
         }
         // Block / unblock based on filters and uriToLabelAnnotations
-        let {filters} = await chrome.storage.sync.get("filters");
         const filterSet = new Set(filters);
         // Iterate through each img, if any one of its labels are in filterSet, then block it.
         for (let img of allImgs) {
@@ -91,7 +91,7 @@ async function updateBlocks(isBlocking, apiKey) {
                 img.style.opacity = 0;
             } else {
                 for (let label of uriToLabelAnnotations.get(img.src)) {
-                    if (filterSet.has(label.description.toLowerCase())) {
+                    if (filterSet.has(label.description.toLowerCase()) && label.score >= aiTolerance) {
                         img.style.opacity = 0;
                         break;
                     }

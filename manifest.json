@@ -1,15 +1,13 @@
 {
     "name": "ImageBlock",
-    "description": "Chrome extension to block certain types of images on webpages.",
-    "version": "1.0",
+    "description": "Block images based on user-set filters using Google's Vision AI. Requires your own GCP Vision API key (see: bit.ly/goog-vision).",
+    "version": "0.0.0.1",
     "manifest_version": 3,
     "background": {
         "service_worker": "background.js"
     },
     "permissions": [
-        "storage",
-        "activeTab",
-        "scripting"
+        "storage"
     ],
     "content_scripts": [
         {
